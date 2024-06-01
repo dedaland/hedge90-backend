@@ -1,0 +1,7 @@
+version: '3.8'
+
+services:
+  redis:
+    image: arm64v8/redis:7.2.5
+    ports:
+      - "6379:6379"
