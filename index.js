@@ -4,9 +4,13 @@ import { Web3 } from 'web3';
 import { contract_abi } from './contract_abi.js'
 import { promisify } from 'util';
 import axios from 'axios'
+import cors from 'cors'
+
 
 const app = express();
 const port = 3000;
+
+app.use(cors())
 
 // Create a Redis client
 const redisClient = redis.createClient();
@@ -24,12 +28,15 @@ redisClient.on('error', function (err) {
 const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
 // https://bsc-testnet.g.allthatnode.com/full/evm/e545c6a0498443ba942cd4c99408bf1e
 
-const contractAddress = '0x5d4fC96A0f39182d8e1ECe4Dd006f9Da839B2Bea';
+const contractAddress = '0x894974Bc5dD9CE85E7A4d0d729E77D9a6E4BDCC0';
 
 const account = '0x2f5EF555ce682CB3F88623cC628b67fF0C4e90bD';
 
 // The private key of the account (never share this or hardcode it in production)
 const privateKey = '7a9169a72b7b8b820ae23451a58959996557cf6f363b78bf3aa8e8a8aaed47e3';
+
+const contract = new web3.eth.Contract(contract_abi, contractAddress);
+
 
 
 const fetchData = async () => {
@@ -41,7 +48,7 @@ const fetchData = async () => {
                 const value = await redisClient.get('deda-price');
                 if(value != item.value || value === null){
                     console.log("Updating price")
-                    await redisClient.set('deda-price', item.value);
+                    await redisClient.set('deda-price', item.value) //, {EX: 30});
                     await updateBlockchainPrice(Number(item.value))
                 }else{
                     console.log("Price is not changed")
@@ -57,7 +64,6 @@ const fetchData = async () => {
 const updateBlockchainPrice = async (price) => {
     try{
         console.log("data type", typeof price, price, price * (10**6))
-        const contract = new web3.eth.Contract(contract_abi, contractAddress);
         const method  = contract.methods.setTokenPrice(price * (10**6));
         const gas = await method.estimateGas({ from: account });
         const gasPrice = await web3.eth.getGasPrice()
@@ -82,11 +88,39 @@ const updateBlockchainPrice = async (price) => {
     }
 };
 
+const stringifyBigIntsInArray = (array) => {
+  return array.map(item => {
+    const newItem = {};
+    for (const key in item) {
+      if (typeof item[key] === 'bigint') {
+        newItem[key] = item[key].toString();
+      } else {
+        newItem[key] = item[key];
+      }
+    }
+    return newItem;
+  });
+};
+
+const fetchUserPurchases = async (address) => {
+  try{
+    const result = await contract.methods.getPurchases(address).call()
+    const stringifiedResult = stringifyBigIntsInArray(result);
+    await redisClient.set("purchases-"+address, JSON.stringify(stringifiedResult), {EX: 30});
+    console.log('Purchases for ', address, 'stored in Redis');
+    return stringifiedResult
+  }catch(error){
+    console.error('Error fetching or storing purchases:', error);
+  }
+
+}
+
 
 // Fetch data every x (10 sec)
 
 setInterval(async () => {
     await fetchData();
+    // await fetchUserPurchases(account)
   }, 10000);
 
 
@@ -106,6 +140,48 @@ app.get('/get-price', async (req, res) => {
     res.status(500).send('Error retrieving data from Redis');
   }
 });
+
+
+app.get('/get-user-purchases/:address', async (req, res) => {
+    try {
+      console.log('Received request for/get-user-purchases', req.params.address);
+      const userPurchases = await fetchUserPurchases(req.params.address)
+      res.json(userPurchases)
+
+    //   const reply = await redisClient.get('deda-price');
+    //   if (reply) {
+    //     console.log('Data retrieved from Redis:', reply);
+    //     res.json({ "price": Number(reply) });
+    //     res.json(userPurchases)
+    //   } else {
+    //     console.log('Data not available yet');
+    //     res.status(503).send('Data not available yet. Please try again later.');
+    //   }
+    // } catch (err) {
+    //   console.error('Error retrieving data from Redis:', err);
+    //   res.status(500).send('Error retrieving data from Redis');
+    // }
+  }catch(err){
+    console.error("Err", err)
+  }
+});
+
+  app.get('/set-user-purchases', async (req, res) => {
+    try {
+      console.log('Received request for /set-user-purchases');
+      const reply = await redisClient.get('deda-price');
+      if (reply) {
+        console.log('Data retrieved from Redis:', reply);
+        res.json({ "price": Number(reply) });
+      } else {
+        console.log('Data not available yet');
+        res.status(503).send('Data not available yet. Please try again later.');
+      }
+    } catch (err) {
+      console.error('Error retrieving data from Redis:', err);
+      res.status(500).send('Error retrieving data from Redis');
+    }
+  });
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
