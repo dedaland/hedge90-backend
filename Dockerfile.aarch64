@@ -1,5 +1,5 @@
 # Use the official Node.js image as a base
-FROM node:18.20.3-buster-slim
+FROM arm64v8/node:18.20.3-buster-slim
 
 # Set the working directory inside the container
 WORKDIR /app

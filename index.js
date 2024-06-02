@@ -6,6 +6,7 @@ import { promisify } from 'util';
 import axios from 'axios'
 import cors from 'cors'
 
+import 'dotenv/config'
 
 const app = express();
 const port = 3000;
@@ -13,7 +14,7 @@ const port = 3000;
 app.use(cors())
 
 // Create a Redis client
-const redisClient = redis.createClient();
+const redisClient = redis.createClient({ url:'redis://'+process.env.REDIS_URL });
 
 redisClient.connect()
 
@@ -25,15 +26,15 @@ redisClient.on('error', function (err) {
     console.error('Something went wrong with Redis: ' + err);
 });
 
-const web3 = new Web3('https://data-seed-prebsc-1-s1.binance.org:8545');
+const web3 = new Web3(process.env.RPC_URL);
 // https://bsc-testnet.g.allthatnode.com/full/evm/e545c6a0498443ba942cd4c99408bf1e
 
-const contractAddress = '0x894974Bc5dD9CE85E7A4d0d729E77D9a6E4BDCC0';
+const contractAddress = process.env.CONTRACT_ADDRESS;
 
-const account = '0x2f5EF555ce682CB3F88623cC628b67fF0C4e90bD';
+const account = process.env.ACCOUNT;
 
 // The private key of the account (never share this or hardcode it in production)
-const privateKey = '7a9169a72b7b8b820ae23451a58959996557cf6f363b78bf3aa8e8a8aaed47e3';
+const privateKey = process.env.PRIVATE_KEY;
 
 const contract = new web3.eth.Contract(contract_abi, contractAddress);
 
@@ -41,15 +42,15 @@ const contract = new web3.eth.Contract(contract_abi, contractAddress);
 
 const fetchData = async () => {
     try {
-        const response = await axios.get("https://api.dedabit.co/v1/market");
+        const response = await axios.get(process.env.PRICE_ENDPOINT);
         const data = response.data['data'];
         for(let item of data){
             if(item.coin === "deda"){
                 const value = await redisClient.get('deda-price');
-                if(value != item.value || value === null){
+                if(value != item.sell || value === null){
                     console.log("Updating price")
-                    await redisClient.set('deda-price', item.value) //, {EX: 30});
-                    await updateBlockchainPrice(Number(item.value))
+                    await redisClient.set('deda-price', item.sell) //, {EX: 30});
+                    await updateBlockchainPrice(Number(item.sell))
                 }else{
                     console.log("Price is not changed")
                 }
@@ -116,12 +117,12 @@ const fetchUserPurchases = async (address) => {
 }
 
 
-// Fetch data every x (10 sec)
+// Fetch data every x (20 sec)
 
 setInterval(async () => {
     await fetchData();
     // await fetchUserPurchases(account)
-  }, 10000);
+  }, 20000);
 
 
 app.get('/get-price', async (req, res) => {
