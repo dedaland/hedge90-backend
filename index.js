@@ -146,6 +146,9 @@ app.get('/get-price', async (req, res) => {
 app.get('/get-user-purchases/:address', async (req, res) => {
     try {
       console.log('Received request for/get-user-purchases', req.params.address);
+      if(!req.params.address){
+        res.status(400).send('No address!');
+      }
       const userPurchases = await fetchUserPurchases(req.params.address)
       res.json(userPurchases)
 
