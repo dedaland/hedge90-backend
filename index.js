@@ -1,7 +1,8 @@
 import express from 'express';
 import redis from 'redis';
 import { Web3 } from 'web3';
-import { contract_abi } from './contract_abi.js'
+import { tokenPriceAbi } from './tokenPriceAbi.js'
+import { tokenSaleAbi } from './tokenSaleAbi.js'
 import { promisify } from 'util';
 import axios from 'axios'
 import cors from 'cors'
@@ -29,14 +30,14 @@ redisClient.on('error', function (err) {
 const web3 = new Web3(process.env.RPC_URL);
 // https://bsc-testnet.g.allthatnode.com/full/evm/e545c6a0498443ba942cd4c99408bf1e
 
-const contractAddress = process.env.CONTRACT_ADDRESS;
+const tokenPriceContractAddress = process.env.TOKEN_PRICE_CONTRACT_ADDRESS;
+const tokenSaleContractAddress = process.env.TOKEN_SALE_CONTRACT_ADDRESS;
 
 const account = process.env.ACCOUNT;
 
 // The private key of the account (never share this or hardcode it in production)
 const privateKey = process.env.PRIVATE_KEY;
 
-const contract = new web3.eth.Contract(contract_abi, contractAddress);
 
 
 
@@ -65,13 +66,14 @@ const fetchData = async () => {
 const updateBlockchainPrice = async (price) => {
     try{
         console.log("data type", typeof price, price, price * (10**6))
+        const contract = new web3.eth.Contract(tokenPriceAbi, tokenPriceContractAddress);
         const method  = contract.methods.setTokenPrice(price * (10**6));
         const gas = await method.estimateGas({ from: account });
         const gasPrice = await web3.eth.getGasPrice()
         const data = method.encodeABI();
         const tx = {
             from: account,
-            to: contractAddress,
+            to: tokenPriceContractAddress,
             gas,
             gasPrice,
             data
@@ -105,6 +107,7 @@ const stringifyBigIntsInArray = (array) => {
 
 const fetchUserPurchases = async (address) => {
   try{
+    const contract = new web3.eth.Contract(tokenSaleAbi, tokenSaleContractAddress);
     const result = await contract.methods.getPurchases(address).call()
     const stringifiedResult = stringifyBigIntsInArray(result);
     await redisClient.set("purchases-"+address, JSON.stringify(stringifiedResult), {EX: 30});
@@ -146,8 +149,8 @@ app.get('/get-price', async (req, res) => {
 app.get('/get-user-purchases/:address', async (req, res) => {
     try {
       console.log('Received request for/get-user-purchases', req.params.address);
-      if(!req.params.address){
-        res.status(400).send('No address!');
+      if(req.params.address === "undefined"){
+        return res.status(200).send('No address!');
       }
       const userPurchases = await fetchUserPurchases(req.params.address)
       res.json(userPurchases)

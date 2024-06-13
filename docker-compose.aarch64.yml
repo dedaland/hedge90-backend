@@ -8,12 +8,12 @@ services:
     networks:
       - deda-network
   
-  deda-backend:
-    image: deda-backend:latest
-    ports:
-      - "3000:3000"
-    networks:
-      - deda-network
+  # deda-backend:
+  #   image: deda-backend:latest
+  #   ports:
+  #     - "3000:3000"
+  #   networks:
+  #     - deda-network
 
 networks:
   deda-network:
