@@ -65,9 +65,9 @@ const fetchData = async () => {
 
 const updateBlockchainPrice = async (price) => {
     try{
-        console.log("data type", typeof price, price, price * (10**6))
+        console.log("data type", typeof price, price, price * (10**18))
         const contract = new web3.eth.Contract(tokenPriceAbi, tokenPriceContractAddress);
-        const method  = contract.methods.setTokenPrice(price * (10**6));
+        const method  = contract.methods.setTokenPrice(price * (10**18));
         const gas = await method.estimateGas({ from: account });
         const gasPrice = await web3.eth.getGasPrice()
         const data = method.encodeABI();
