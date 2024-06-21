@@ -40,7 +40,8 @@ const privateKey = process.env.PRIVATE_KEY;
 
 
 
-
+// NOTE: this is not needed anymore, since this was insecure.
+// now the exchanges updating price directly on smart contract
 const fetchData = async () => {
     try {
         const response = await axios.get(process.env.PRICE_ENDPOINT);
@@ -62,6 +63,10 @@ const fetchData = async () => {
         throw error;
       }
     };
+
+
+// NOTE: this is not needed anymore, since this was insecure.
+// now the exchanges updating price directly on smart contract
 
 const updateBlockchainPrice = async (price) => {
     try{
@@ -154,7 +159,9 @@ app.get('/get-user-purchases/:address', async (req, res) => {
       }
       const userPurchases = await fetchUserPurchases(req.params.address)
       res.json(userPurchases)
-
+    // right now, we need to get purchases directly from blockchain
+    //
+    //
     //   const reply = await redisClient.get('deda-price');
     //   if (reply) {
     //     console.log('Data retrieved from Redis:', reply);
@@ -173,6 +180,7 @@ app.get('/get-user-purchases/:address', async (req, res) => {
   }
 });
 
+// NOTE: this is not used because user purchases fetched directly from blockchain!
   app.get('/set-user-purchases', async (req, res) => {
     try {
       console.log('Received request for /set-user-purchases');
