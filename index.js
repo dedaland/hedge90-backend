@@ -60,7 +60,7 @@ const fetchData = async () => {
         }
       } catch (error) {
         console.error('Error calling the API:', error);
-        throw error;
+        // throw error;
       }
     };
 
@@ -127,10 +127,10 @@ const fetchUserPurchases = async (address) => {
 
 // Fetch data every x (20 sec)
 
-setInterval(async () => {
-    await fetchData();
+// setInterval(async () => {
+//     await fetchData();
     // await fetchUserPurchases(account)
-  }, 20000);
+  // }, 20000);
 
 
 app.get('/get-price', async (req, res) => {
